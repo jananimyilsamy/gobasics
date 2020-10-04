@@ -1,90 +1,102 @@
 package main
 
 import (
-	"net/http"
-	"html/template"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"html/template"
+	"net/http"
+	"time"
 )
-type Corona struct {
-	Conditions []interface{} `json:"conditions"`
-	Extras     struct {
-	} `json:"extras"`
-	Question struct {
-		Explanation interface{} `json:"explanation"`
-		Extras      struct {
-		} `json:"extras"`
-		Items []struct {
-			Choices []struct {
-				ID    string `json:"id"`
-				Label string `json:"label"`
-			} `json:"choices"`
-			Explanation string `json:"explanation"`
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-		} `json:"items"`
-		Text string `json:"text"`
-		Type string `json:"type"`
-	} `json:"question"`
-	ShouldStop bool `json:"should_stop"`
+type coronaReport struct {
+	Global struct {
+		NewConfirmed   int `json:"NewConfirmed"`
+		TotalConfirmed int `json:"TotalConfirmed"`
+		NewDeaths      int `json:"NewDeaths"`
+		TotalDeaths    int `json:"TotalDeaths"`
+		NewRecovered   int `json:"NewRecovered"`
+		TotalRecovered int `json:"TotalRecovered"`
+	} `json:"Global"`
+	Countries []struct {
+		Country        string    `json:"Country"`
+		CountryCode    string    `json:"CountryCode"`
+		Slug           string    `json:"Slug"`
+		NewConfirmed   int       `json:"NewConfirmed"`
+		TotalConfirmed int       `json:"TotalConfirmed"`
+		NewDeaths      int       `json:"NewDeaths"`
+		TotalDeaths    int       `json:"TotalDeaths"`
+		NewRecovered   int       `json:"NewRecovered"`
+		TotalRecovered int       `json:"TotalRecovered"`
+		Date           time.Time `json:"Date"`
+	} `json:"Countries"`
+	Date time.Time `json:"Date"`
 }
 
 func main(){
-	
-	weatherFinder := func(w http.ResponseWriter, r *http.Request){
+	disp:=func(w http.ResponseWriter, r *http.Request){
 
-		endpoint := "https://api.infermedica.com/covid19/diagnosis"
 
-		appId := "XXXXXXXX"
 
-		name  := r.FormValue("Name ")
+		endpoint := "https://api.covid19api.com/"
 
-		req := endpoint +name  + "&APPID=" + appId
+		Country := r.FormValue("Country")
 
-		fmt.Println("janani")
+		res := endpoint + Country
 
-		resp,er := http.Get(req)
+		req,err:=http.Get(res)
 
-		if er != nil{
-			print(er)
+		defer req.Body.Close()
+
+		fmt.Println(Country)
+
+		if(err!=nil){
+
+			fmt.Println(err)
 		}
 
-		defer resp.Body.Close()
 
-		decoder := json.NewDecoder(resp.Body)
 
-		var Data Corona
+		var c  coronaReport
 
-		err := decoder.Decode(&Data)
+		decoder:=json.NewDecoder(req.Body)
 
-		if err == nil{
-			print(err)
+		er1 := decoder.Decode(&c)
+		fmt.Println(c)
+		if(er1!=nil){
+
+			fmt.Println(er1)
 		}
-
-		wr,er := template.ParseFiles("weather.html")
+		wr,er := template.ParseFiles("corona.html")
 
 		if er != nil{
-			print("Something went wrong")
+			fmt.Println(res)
+			fmt.Println("wrong something")
+
 		}else{
-			wr.Execute(w,Data)
+			wr.Execute(w,c)
 		}
-
 		fmt.Println(wr)
+
+
 	}
 
-	Iweather := func(w http.ResponseWriter, r *http.Request){
-		t,err := template.ParseFiles("getCity.html")
-		if err != nil{
-			fmt.Println("panic")
+	input:=func(w http.ResponseWriter, r *http.Request){
+
+		wr,er := template.ParseFiles("getCountry.html")
+
+		if er != nil{
+
+			fmt.Print(" wrong")
+
+		}else{
+
+			wr.Execute(w,nil)
+
+			fmt.Print("redirected")
 		}
-		data := "fine"
-		t.Execute(w,data)
 	}
 
-	http.HandleFunc("/",Iweather)
+	http.HandleFunc("/c",input)
 
-	http.HandleFunc("/FindWeather",weatherFinder)
-
+	http.HandleFunc("/FindWeather",disp)
 	http.ListenAndServe(":9229",nil)
-
 }
